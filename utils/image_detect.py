@@ -2,15 +2,21 @@
 
 import argparse
 import traceback
-import torch
-from PIL import Image
-from PIL.ExifTags import TAGS
 import os
 from io import BytesIO
 import requests
 from flask import current_app
-# from django.conf import settings
-from nonescape import  NonescapeClassifierMini, preprocess_image
+from PIL import Image
+from PIL.ExifTags import TAGS
+
+# Handle missing torch/nonescape dependencies gracefully
+try:
+    import torch
+    from nonescape import NonescapeClassifierMini, preprocess_image
+    TORCH_AVAILABLE = True
+except ImportError:
+    print("Warning: PyTorch and nonescape not available. Image classification will return mock results.")
+    TORCH_AVAILABLE = False
 
 
 
@@ -32,39 +38,39 @@ def load_image(image_path):
 
 def classify_image_NonescapeClassifier(image_path):
     try:
+        if not TORCH_AVAILABLE:
+            # Return mock results when PyTorch is not available
+            print("PyTorch not available, returning mock classification results")
+            try:
+                image = load_image(image_path)
+                image_exif = extract_exif(image)
+            except Exception as e:
+                print(f"Error loading image: {e}")
+                image_exif = {}
+            
+            return {
+                "verdict": "Mock result - PyTorch not available",
+                "confidence_level": "Low confidence",
+                "authentic_prob": 0.5,
+                "ai_prob": 0.5,
+                "image_exif": image_exif,
+                "error": "PyTorch dependencies not available. Install torch and nonescape package for real classification."
+            }
 
-            # parser = argparse.ArgumentParser(description="Classify image as authentic or AI-generated")
-            # parser.add_argument("model_path", help="Path to model file (.safetensors)")
-            # parser.add_argument("image_path", help="Path to image file")
-            # parser.add_argument("--mini", action="store_true", help="Use mini model variant")
-            # args = parser.parse_args()
-
-        # model_name = "nonescape-v0.safetensors"
+        # Original PyTorch-based classification code
         model_name = "nonescape-mini-v0.safetensors"
-        # print("base dir", os.path.join('detect_ai_image', 'utils', model_name))
-
-        model_path = "detect_ai_image/utils/nonescape-v0.safetensors"
-        model_path = os.path.join('detect_ai_image', 'utils', model_name)
-        # model_path = os.path.join(os.getcwd(), "detect_ai_image", "utils", "nonescape-v0.safetensors")
         model_path = os.path.join(
-            current_app.root_path,  # Absolute path to your project root
+            current_app.root_path,
             'utils', model_name
         )
 
-        # image_path="examples/example_images/sample.jpg"
-
-
-        print("Loading model...",model_path)
-
-        # model = (NonescapeClassifier).from_pretrained(model_path)
-        model = (NonescapeClassifierMini).from_pretrained(model_path)
-
+        print("Loading model...", model_path)
+        model = NonescapeClassifierMini.from_pretrained(model_path)
         model.eval()
 
         try:
             image = load_image(image_path)
             image_exif = extract_exif(image)
-
         except Exception as e:
             print(f"Error loading image: {e}")
             return
@@ -76,23 +82,16 @@ def classify_image_NonescapeClassifier(image_path):
             authentic_prob = probs[0][0].item()
             ai_prob = probs[0][1].item()
 
-        # adding by self
         verdict = "AI-generated" if ai_prob > 0.5 else "Authentic / Real"
         print(f"Verdict: {verdict}")
 
         confidence_level = (
-        "High confidence" if abs(ai_prob - authentic_prob) > 0.4 else
-        "Moderate confidence" if abs(ai_prob - authentic_prob) > 0.2 else
-        "Low confidence"
+            "High confidence" if abs(ai_prob - authentic_prob) > 0.4 else
+            "Moderate confidence" if abs(ai_prob - authentic_prob) > 0.2 else
+            "Low confidence"
         )
         print(f"Confidence Level: {confidence_level}")
-        # print(f"Model: {'NonescapeClassifierMini' if args.mini else 'NonescapeClassifier'}")
-        # print(f"Model Path: {args.model_path}")
-        # end adding by self
 
-
-
-        # print(f"Image: {args.image_path}")
         print(f"tensor: {probs}")
         print(f"Authentic probability: {authentic_prob:.2%}")
         print(f"Synthetic probability: {ai_prob:.2%}")
@@ -102,15 +101,13 @@ def classify_image_NonescapeClassifier(image_path):
         else:
             print("Classification: Authentic")
 
-
         result = {
-            "verdict":verdict,
-            "confidence_level":confidence_level,
-            "authentic_prob":authentic_prob,
-            "ai_prob":ai_prob,
-            "image_exif":image_exif
+            "verdict": verdict,
+            "confidence_level": confidence_level,
+            "authentic_prob": authentic_prob,
+            "ai_prob": ai_prob,
+            "image_exif": image_exif
         }
-
 
         return result
     except Exception as e:

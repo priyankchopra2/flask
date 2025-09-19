@@ -16,7 +16,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor, nn
 import torchvision.models as models
-import torchvision.transforms.v2 as T
+import torchvision.transforms as transforms
 from safetensors.torch import load_file
 from PIL import Image
 
@@ -30,16 +30,12 @@ def preprocess_image(image: Image.Image) -> Tensor:
     Returns:
         Preprocessed tensor ready for model input
     """
-    transform = T.Compose(
-        [
-            T.ToImage(),
-            T.Resize(256),
-            T.CenterCrop(224),
-            T.JPEG(quality=100),
-            T.ToDtype(torch.float32, scale=True),
-            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
-    )
+    transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),  # Converts PIL Image to tensor and scales to [0,1]
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
     return transform(image)
 
 

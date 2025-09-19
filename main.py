@@ -12,24 +12,22 @@ def index():
 @app.route('/classify', methods=['POST'])
 def classify():
     try:
-        # import pdb;pdb.set_trace()
-        print("Received request for image classification",request.data)
+        print("Received request for image classification", request.data)
         data = request.form
-        image_path = request.form["image_path"]
-        # user_id = data.get('user_id') or request.headers.get('X-User-ID')
-        # user_email = data.get('user_email') or request.headers.get('X-User-Email')
+        image_path = request.form.get("image_path", "").strip()
 
         if not image_path:
             return jsonify({'error': 'Image path is required'}), 400
 
+        # Security: Only allow HTTPS URLs, not local file system access
+        if not (image_path.startswith("https://") or image_path.startswith("http://")):
+            return jsonify({'error': 'Only HTTP/HTTPS URLs are allowed for security reasons'}), 400
+
         result = classify_image_NonescapeClassifier(image_path)
-        # result = ""
 
         return jsonify({
             'result': result,
             'image_path': image_path,
-            # 'user_id': user_id,
-            # 'user_email': user_email
         }), 200
 
     except Exception as e:
@@ -37,4 +35,6 @@ def classify():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=int(os.getenv("PORT", 5000)))
+    # Use debug=False for production deployment
+    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    app.run(debug=debug_mode, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
