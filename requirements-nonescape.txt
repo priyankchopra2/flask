@@ -4,6 +4,8 @@ torchvision==0.22.1
 safetensors==0.5.3
 Pillow>=9.0.0
 torch==2.0.1+cpu
+--find-links https://download.pytorch.org/whl/torch_stable.html
+
 # torch==2.0.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
 # torchvision
 # Pillow
