@@ -17,7 +17,6 @@ import torch
 from torch import Tensor, nn
 import torchvision.models as models
 import torchvision.transforms.v2 as T
-from transformers import Dinov2Model, Dinov2Config
 from safetensors.torch import load_file
 from PIL import Image
 
@@ -43,56 +42,6 @@ def preprocess_image(image: Image.Image) -> Tensor:
     )
     return transform(image)
 
-
-class NonescapeClassifier(nn.Module):
-    """ViT/EfficientNet-based fake image detector
-
-    Uses a vision transformer as backbone with EfficientNet v2 to compute an attention maps for the ViT features.
-    """
-
-    def __init__(self, num_classes: int = 2, num_heads=16, num_queries: int = 128):
-        super().__init__()
-
-        self.embedding_size = 1024
-        self.num_queries = num_queries
-
-        vit_backbone = Dinov2Model(Dinov2Config.from_pretrained("facebook/dinov2-large"))
-        efficientnet = models.efficientnet_v2_l(weights=None, num_classes=num_queries * self.embedding_size)
-        self.vit_backbone = vit_backbone
-        self.query_net = efficientnet
-        self.key_net = nn.Linear(self.embedding_size, self.embedding_size)
-        self.value_net = nn.Linear(self.embedding_size, self.embedding_size)
-        self.attention = nn.MultiheadAttention(self.embedding_size, num_heads=num_heads, batch_first=True)
-        self.head = nn.Linear(self.embedding_size, num_classes)
-
-        self.register_buffer("_input_mean", torch.empty((3, 1, 1)))
-        self.register_buffer("_input_std", torch.empty((3, 1, 1)))
-
-    @classmethod
-    def from_pretrained(cls, path: str) -> NonescapeClassifier:
-        state_dict = load_file(path)
-
-        model = cls()
-        model.load_state_dict(state_dict)
-
-        return model
-
-    def forward(self, x: Tensor) -> Tensor:
-        B = x.shape[0]
-
-        with torch.no_grad():
-            vit_output = self.vit_backbone(x)
-            vit_features = vit_output.last_hidden_state  # CLS token [B, embed_dim]
-        q = self.query_net.forward(x).reshape(B, self.num_queries, -1)  # [B, num_queries, embed_dim]
-        k = self.key_net.forward(vit_features)  # [B, D, embed_dim]
-        v = self.value_net.forward(vit_features)  # [B, D, embed_dim]
-
-        emb, _ = self.attention.forward(q, k, v)  # [B, num_queries, embed_dim]
-        emb = emb.mean(dim=1)
-        logits = self.head(emb.squeeze(1))
-        probs = nn.functional.softmax(logits, dim=-1)
-
-        return probs
 
 
 class NonescapeClassifierMini(nn.Module):
@@ -123,4 +72,4 @@ class NonescapeClassifierMini(nn.Module):
         return probs
 
 
-__all__ = ["NonescapeClassifier", "NonescapeClassifierMini", "preprocess_image"]
+__all__ = [ "NonescapeClassifierMini", "preprocess_image"]

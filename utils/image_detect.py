@@ -10,7 +10,7 @@ from io import BytesIO
 import requests
 from flask import current_app
 # from django.conf import settings
-from nonescape import NonescapeClassifier, NonescapeClassifierMini, preprocess_image
+from nonescape import  NonescapeClassifierMini, preprocess_image
 
 
 
@@ -57,7 +57,7 @@ def classify_image_NonescapeClassifier(image_path):
         print("Loading model...",model_path)
 
         # model = (NonescapeClassifier).from_pretrained(model_path)
-        model = (NonescapeClassifierMini if "mini" in model_path else NonescapeClassifier).from_pretrained(model_path)
+        model = (NonescapeClassifierMini).from_pretrained(model_path)
 
         model.eval()
 
