@@ -1,13 +1,13 @@
 # torch==2.7.1
-torchvision==0.22.1
+# torchvision==0.22.1
 #transformers==4.53.2
-safetensors==0.5.3
-Pillow>=9.0.0
+# safetensors==0.5.3
+# Pillow>=9.0.0
 # torch==2.0.1+cpu
 # --find-links https://download.pytorch.org/whl/torch_stable.html
 
-# 
-# torchvision
-# Pillow
+safetensors
+torchvision
+Pillow
 # requests
 # psutil
